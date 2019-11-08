@@ -49,11 +49,32 @@
           <template slot-scope="scope">
             <el-button type="primary" icon="el-icon-edit" size="mini">编辑</el-button>
             <el-button type="danger" icon="el-icon-delete" size="mini">删除</el-button>
-            <el-button type="warning" icon="el-icon-setting" size="mini">分配权限</el-button>
+            <el-button
+              type="warning"
+              icon="el-icon-setting"
+              size="mini"
+              @click="showSetDialog(scope.row)"
+            >分配权限</el-button>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+    <!-- 分配权限对话框 -->
+    <el-dialog title="分配权限" :visible.sync="rightDialogVisible" width="50%">
+      <!-- 树形控件 -->
+      <el-tree
+        :data="rightList"
+        :props="defaultProps"
+        node-key="id"
+        :default-checked-keys="defKeys"
+        show-checkbox
+        degault-expand-all
+      ></el-tree>
+      <span slot="footer" class="dialog-footer">
+        <el-button @click="rightDialogVisible = false">取 消</el-button>
+        <el-button type="primary" @click="rightDialogVisible = false">确 定</el-button>
+      </span>
+    </el-dialog>
   </div>
 </template>
 <script>
@@ -63,7 +84,15 @@ export default {
   },
   data() {
     return {
-      rolesList: []
+      rolesList: [], //所有角色列表数据
+      rightDialogVisible: false, //控制对话框的显示隐藏
+      rightList: [], //所有权限的数据
+      //树形控件的属性绑定控件
+      defaultProps: {
+        children: "children",
+        label: "authName"
+      },
+      defKeys: [] //默认被选中的节点ID值
     };
   },
   methods: {
@@ -95,6 +124,30 @@ export default {
             message: "已取消删除"
           });
         });
+    },
+    //展示分配权限对话框
+    async showSetDialog(role) {
+      //获取所有权限数据
+      const { data: res } = await this.$http.get(`rights/tree`);
+      console.log(res.data);
+      if (res.meta.status != 200)
+        return this.$message.error("请求权限数据失败");
+      //获取到的权限数据保存到Data中
+      this.rightList = res.data;
+      //通过递归形式，获取角色下所有的三级权限的ID，并保存到defKeys数组中。
+      var keys = [];
+      function getId(obj) {
+        obj.children.forEach(item => {
+          if (item.children) {
+            getId(item);
+          } else {
+            keys.push(item.id);
+          }
+        });
+        getId(role);
+      }
+      this.defKeys = keys;
+      this.rightDialogVisible = true;
     }
   }
 };
