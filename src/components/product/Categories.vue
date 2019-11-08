@@ -48,11 +48,30 @@
       ></el-pagination>
     </el-card>
     <!-- 添加分类对话框 -->
-    <el-dialog title="提示" :visible.sync="addCateDialogVisible" width="30%">
-      <span>这是一段信息</span>
+    <el-dialog title="提示" :visible.sync="addCateDialogVisible" width="50%" @close="resetCateForm">
+      <!-- 弹框表单区 -->
+      <el-form
+        :model="addCateForm"
+        :rules="addCateFormRules"
+        ref="addCateFormRef"
+        label-width="100px"
+      >
+        <el-form-item label="分类名称" prop="cat_name">
+          <el-input v-model="addCateForm.cat_name"></el-input>
+        </el-form-item>
+        <el-form-item label="父级分类">
+          <el-cascader
+            v-model="selectedKeys"
+            :options="parentCateList"
+            :props="{expandTrigger:'hover',label:'cat_name',value:'cat_id',checkStrictly:true}"
+            clearable
+            @change="cascaderChange"
+          ></el-cascader>
+        </el-form-item>
+      </el-form>
       <span slot="footer" class="dialog-footer">
         <el-button @click="addCateDialogVisible = false">取 消</el-button>
-        <el-button type="primary" @click="addCateDialogVisible = false">确 定</el-button>
+        <el-button type="primary" @click="saveCate">确 定</el-button>
       </span>
     </el-dialog>
   </div>
@@ -95,8 +114,20 @@ export default {
           template: "option"
         }
       ],
-      //   pagesize:
-      addCateDialogVisible: false
+      addCateDialogVisible: false,
+      addCateForm: {
+        cat_name: "",
+        cat_pid: 0,
+        cat_level: 0
+      },
+      addCateFormRules: {
+        cat_name: [
+          { required: true, message: "分类名称不能为空", trigger: "blur" },
+          { min: 3, max: 15, message: "分类名称不能为空", trigger: "blur" }
+        ]
+      },
+      parentCateList: [],
+      selectedKeys: []
     };
   },
   methods: {
@@ -120,9 +151,43 @@ export default {
     },
     addCate() {
       this.addCateDialogVisible = true;
+      this.getParentsCateList();
+    },
+    async getParentsCateList() {
+      const { data: res } = await this.$http.get("categories", {
+        params: { type: 2 }
+      });
+      console.log(res);
+      if (res.meta.status != 200) return this.$message.error("获取失败");
+      this.parentCateList = res.data;
+    },
+    cascaderChange() {
+      if (this.selectedKeys.length == 0) {
+        this.addCateForm.cat_pid = 0;
+      } else {
+        this.addCateForm.cat_pid ==
+          this.selectedKeys[this.selectedKeys.length - 1];
+      }
+      this.addCateForm.cat_level = this.e = selectedKeys.length;
+    },
+    resetCateForm() {
+      this.$refs.addCateFormRef.resetFields();
+      this.selectedKeys = [];
+      this.addCateForm.cat_pid = 0;
+      this.addCateForm.cat_level = 0;
+    },
+    async saveCate() {
+      const { data: res } = await this.$http.post(
+        "categories",
+        this.addCateForm
+      );
+      if (res.meta.status != 200) return this.$message.error("添加失败");
+      this.getCateList();
+      this.addCateDialogVisible = false;
     }
   }
 };
 </script>
 <style scoped lang="less">
+
 </style>
