@@ -21,7 +21,17 @@ Vue.prototype.$http = axios
 
 //关闭控制台提示信息
 Vue.config.productionTip = false
-
+//定义全局过滤器/过滤时间格式
+Vue.filter('dateFormate', function (time) {
+  const fd = new Date(time)
+  let y = fd.getFullYear();//年
+  let m = (fd.getMonth() + 1 + '').padStart(2, '0');//月
+  let d = (fd.getDay() + '').padStart(2, '0');//日
+  let hh = (fd.getHours() + '').padStart(2, '0');//时
+  let mm = (fd.getMinutes() + '').padStart(2, '0');//分
+  let ss = (fd.getSeconds() + '').padStart(2, '0');//秒
+  return `${y}-${m}-${d} ${hh}:${mm}:${ss}`
+})
 new Vue({
   router,
   render: h => h(App)

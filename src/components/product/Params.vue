@@ -28,7 +28,12 @@
             <el-table-column type="expand">
               <template slot-scope="scope">
                 <!-- 循环生成tag标签 -->
-                <el-tag v-for="(item,i) in scope.row.attr_vals" :key="i" closable>{{item}}</el-tag>
+                <el-tag
+                  v-for="(item,i) in scope.row.attr_vals"
+                  :key="i"
+                  closable
+                  @close="handleClose(i,scope.row)"
+                >{{item}}</el-tag>
                 <!-- 添加新标签按钮 -->
                 <el-input
                   v-if="scope.row.inputVisible"
@@ -73,7 +78,35 @@
 
           <!-- 静态数据表格展示区 -->
           <el-table :data="onlyTableData" style="width: 100%" border strips>
-            <el-table-column type="expand"></el-table-column>
+            <!-- 展开行 -->
+            <el-table-column type="expand">
+              <template slot-scope="scope">
+                <!-- 循环生成tag标签 -->
+                <el-tag
+                  v-for="(item,i) in scope.row.attr_vals"
+                  :key="i"
+                  closable
+                  @close="handleClose(i,scope.row)"
+                >{{item}}</el-tag>
+                <!-- 添加新标签按钮 -->
+                <el-input
+                  v-if="scope.row.inputVisible"
+                  v-model="scope.row.inputValue"
+                  class="input-new-tag"
+                  ref="saveTagInput"
+                  size="small"
+                  @keyup.enter.native="handleInputConfirm(scope.row)"
+                  @blur="handleInputConfirm(scope.row)"
+                ></el-input>
+                <el-button
+                  v-else
+                  class="button-new-tag"
+                  size="small"
+                  @click="showInput(scope.row)"
+                >+ New Tag</el-button>
+              </template>
+            </el-table-column>
+            <!-- 索引列 -->
             <el-table-column type="index"></el-table-column>
             <el-table-column label="参数名称" prop="attr_name"></el-table-column>
             <el-table-column label="操作">
@@ -187,7 +220,15 @@ export default {
       this.getParamsData();
     },
     async getParamsData() {
-      if (this.selectedKeys.length != 3) return (this.selectedKeys = []);
+      if (this.selectedKeys.length != 3) {
+        //清空级联列表数据
+        this.selectedKeys = [];
+        //  清空静态数据列表数据
+        this.onlyTableData = [];
+        //  清空动态列表数据
+        this.manyTableData = [];
+        return;
+      }
       //如果用户选的时三级分类，我们需要区请求选中的三级分类对应的参数
       const { data: res } = await this.$http.get(
         `categories/${this.cateID}/attributes`,
@@ -199,7 +240,7 @@ export default {
       res.data.forEach(item => {
         //判断item.attr_vals是否为空，不为空将内容转换为数组，为返回空数组
         item.attr_vals
-          ? (item.attr_vals = item.attr_vals.split(" "))
+          ? (item.attr_vals = item.attr_vals.split(","))
           : (item.attr_vals = []);
         //控制添加tag按钮文本框的显示与隐藏
         item.inputVisible = false;
@@ -308,19 +349,28 @@ export default {
       row.attr_vals.push(row.inputValue.trim());
       row.inputValue = "";
       row.inputVisible = false;
+      this.saveAttrVals(row);
+    },
+    //将attr_vals参数保存到数据库
+    async saveAttrVals(row) {
       //发送请求到服务器添加数据
       const { data: res } = await this.$http.put(
         `categories/${this.cateID}/attributes/${row.attr_id}`,
         {
           attr_name: row.attr_name,
           attr_sel: row.attr_sel,
-          attr_vals: row.attr_vals.join(" ")
+          attr_vals: row.attr_vals.join(",")
         }
       );
-
       if (res.meta.status !== 200) return this.$message.error("新建参数项失败");
-
-      this.$message.success("新建阐述项成功");
+      this.$message.success("新建参数项成功");
+    },
+    //实现删除tag功能
+    handleClose(i, row) {
+      //删除数组中的元素，splice方法会直接改变原数组
+      row.attr_vals.splice(i, 1);
+      //删除服务器中的数据
+      this.saveAttrVals(row);
     }
   },
   computed: {
