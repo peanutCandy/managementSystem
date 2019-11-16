@@ -10,6 +10,8 @@ import Categories from '@/components/product/Categories.vue'
 import Params from '@/components/product/Params.vue'
 import Goods from '@/components/product/Goods.vue'
 import Add from '@/components/product/Add.vue'
+import Orders from '@/components/order/Orders.vue'
+import Report from '@/components/reports/Report.vue'
 
 
 
@@ -28,6 +30,8 @@ const routes = [
       { path: '/params', component: Params },
       { path: '/goods', component: Goods },
       { path: '/goods/add', component: Add },
+      { path: '/orders', component: Orders },
+      { path: '/reports', component: Report },
     ]
   },
 ]

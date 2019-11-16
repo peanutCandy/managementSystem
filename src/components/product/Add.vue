@@ -81,17 +81,28 @@
               :on-preview="handlePreview"
               :on-remove="handleRemove"
               list-type="picture"
+              :headers="headerObj"
+              :on-success="handleSuccess"
             >
               <el-button size="small" type="primary">点击上传</el-button>
             </el-upload>
           </el-tab-pane>
-          <el-tab-pane label="商品内容" name="4">商品内容</el-tab-pane>
+          <el-tab-pane label="商品内容" name="4">
+            <!-- 富文本区域 -->
+            <quill-editor v-model="addForm.goods_inrtoduce"></quill-editor>
+            <el-button @click="add" type="primary">添加</el-button>
+          </el-tab-pane>
         </el-tabs>
       </el-form>
     </el-card>
+    <!-- 图片预览对话框 -->
+    <el-dialog title="预 览" :visible.sync="previewVisible" width="50%">
+      <img :src="previewPath" alt />
+    </el-dialog>
   </div>
 </template>
 <script>
+import _ from "lodash";
 export default {
   created() {
     this.getCateList();
@@ -105,7 +116,10 @@ export default {
         goods_price: 0, //商品价格
         goods_weight: 0, //商品重量
         goods_number: 0, //商品数量
-        goods_cat: [] //选中商品分类
+        goods_cat: [], //选中商品分类
+        pics: [], //存放上传图片零食路径
+        goods_inrtoduce: "",
+        attrs: [] //动态属性和静态属性合集
       },
       //表单验证规则
       addFormRule: {
@@ -156,7 +170,12 @@ export default {
       },
       manyTableData: [], //动态参数列表
       onlyTableData: [], //静态参数列表
-      fileURL: "http://127.0.0.1:8888/api/private/v1/upload" //文件上传路径
+      fileURL: "http://127.0.0.1:8888/api/private/v1/upload", //文件上传路径
+      headerObj: {
+        Authorization: window.sessionStorage.getItem("token")
+      }, //用于设置文件上传请求头
+      previewVisible: false, //控制预览框显示隐藏
+      previewPath: "" //预览图片路径
     };
   },
   methods: {
@@ -212,9 +231,64 @@ export default {
       }
     },
     //表示点击文件列表名字触发事件
-    handlePreview() {},
+    handlePreview(file) {
+      this.previewVisible = true;
+      console.log(file);
+      this.previewPath = file.response.data.url;
+    },
     //表示点击文件列表右上关闭按钮触发事件
-    handleRemove() {}
+    handleRemove(file) {
+      //1.获取需要删除的图片临时路径
+      const filePath = file.response.data.tmp_path;
+      //2.查找临时路径对应数组索引
+      const i = this.addForm.pics.findIndex(item => item.pic === filePath);
+      //3.删除数组对应索引元素
+      // console.log(i);
+      this.addForm.pics.slice(i, 1);
+      // console.log(this.addForm.pics);
+    },
+    // 监听图片上传事件
+    handleSuccess(respones) {
+      //拼接得到一个图片信息
+      const picInfo = { pic: respones.data.tmp_path };
+      //将图片信息push到数组中去
+      this.addForm.pics.push(picInfo);
+      console.log(this.addForm);
+    },
+    add() {
+      this.$refs.addFormRef.validate(async valid => {
+        if (!valid) return this.$message.error("请填写必要的表单项");
+        var form = _.cloneDeep(this.addForm); //深拷贝
+        console.log(form)
+        form.goods_cat = this.addForm.goods_cat.join(",");
+        var arr = []; //收集动静态属性
+
+        this.manyTableData.forEach(item => {
+          var obj = {
+            attr_id: item.attr_id,
+            attr_value: item.attr_vals.join(",")
+          };
+          arr.push(obj);
+        });
+
+        this.onlyTableData.forEach(item => {
+          var obj = {
+            attr_id: item.attr_id,
+            attr_value: item.attr_vals
+          };
+          arr.push(obj);
+        });
+
+        form.attrs = arr;
+        console.log(form.attrs)
+        // 发送添加商品请求
+        const { data: res } = await this.$http.post("goods", form);
+        if (res.meta.status !== 201) return this.$message.error("添加商品失败");
+        this.$message.success("添加成功");
+        //跳转到商品列表页面
+        this.$router.push("/goods");
+      });
+    }
   },
   computed: {
     //用于获取选中分类列表第三级参数ID值
@@ -228,5 +302,9 @@ export default {
 <style scoped lang="less">
 .el-checkbox {
   margin: 0 10px 0 0 !important;
+}
+.el-dialog img {
+  width: 400px;
+  height: 300px;
 }
 </style>

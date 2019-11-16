@@ -43,3 +43,7 @@ html,body,#app{
 .el-step__title{
     font-size: 13px;    
 }
+
+.ql-editor{
+  height: 200px !important;
+}
